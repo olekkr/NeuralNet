@@ -7,6 +7,7 @@
 
 
 ### Todo:
+ - Revise metrics such that there are continous metrics and final metrics.
  - Add more metrics: accuracy, precision, recall, F1-score
  - Add trainWithMetric(self, *metrics) - > [[loss, metric], ...].
  - Add a plotter class, That works on top of EvalHandler
