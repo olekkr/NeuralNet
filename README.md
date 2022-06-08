@@ -10,5 +10,7 @@
  - Add more metrics: accuracy, precision, recall, F1-score
  - Add trainWithMetric(self, *metrics) - > [[loss, metric], ...].
  - Add a plotter class, That works on top of EvalHandler
- - Train neuralnets, evalute them - Profit!
+ - Train neuralnets
+ - evalute them
+ - Profit!
  
