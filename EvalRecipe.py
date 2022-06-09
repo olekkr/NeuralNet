@@ -26,18 +26,28 @@ class EvalRecipe:
                     metricValue = sampleMetric.getSampleMetric(y,y_pred)
                     self.sampleMetricData[idx].append(metricValue)
 
-    def calculateSampleMetric (self, *sampleMetrics):
+    def calculateSampleMetrics (self, *sampleMetrics):
         sampleMetricsData = [[] for _ in sampleMetrics]
         for metricNum, sampleMetric in enumerate(sampleMetrics):
             for y, y_pred in self.allData:
                 sampleMetricsData[metricNum].append(sampleMetric.getSampleMetric(y, y_pred))
         return sampleMetricsData 
 
+    def calculateEpochMetrics(self, epochs,  *epochMetrics):
+        epochMetricsData = [[] for _ in epochMetrics]
+
+        for metricNum, sampleMetric in enumerate(epochMetrics):
+            for i in range(epochs):
+                chunksize = len(self.allData)
+                data = self.allData[i*chunksize : (i+1)*chunksize]
+                epochMetricsData[metricNum].append(sampleMetric.getTrainMetric(data))
+        return epochMetricsData 
+
+
     def calculateTrainMetrics (self, *trainMetrics):
-        print(self.allData)
         trainMetricsData = []
         for trainMetric in trainMetrics:
-            trainMetricsData += trainMetric.getTrainMetric(self.allData)
+            trainMetricsData.append(trainMetric.getTrainMetric(self.allData))
         return trainMetricsData
                 
 

@@ -58,10 +58,8 @@ class TrainHandler():
         
         # forward pass
         y_pred = self.model.forward(x)
-        
-        
         if evalRecipe:
-            evalRecipe.collectSampleMetrics(y_pred,y)
+            evalRecipe.collectSampleMetrics(y,y_pred)
 
         if self.doTrain:
             #calculate loss

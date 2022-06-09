@@ -1,14 +1,8 @@
+from cmath import nan
 import torch
 
 
 class Metric: # maybe consider using torch.metric
-    
-    def __init__(self, contMetric=False, finalMetric=False, printInfo=False) -> None:
-        self.doContMetric = contMetric
-        self.doFinalMetric = finalMetric
-        self.printInfo = printInfo
-        return None
-
     """
     Abstract class 
     takes care of evaluation
@@ -31,51 +25,81 @@ class Metric: # maybe consider using torch.metric
         '''
         raise NotImplementedError
 
+    def printMaybe(self, epoch, y, y_pred):
+        with torch.no_grad(): 
+            if self.printInfo:
+                print(f"Epoch {epoch} : {self.metricName}: {self.getContniousMetric(y, y_pred)}")
     # todo accuracy, precision, recall, F1-score
 
-
+def confusionMatrix(data):
+    size = len(data)
+    fp, fn, tp, tn = 0, 0, 0, 0
+    for (_y,_y_pred) in data:
+        y = _y.item()
+        y_pred = _y_pred.item()
+        if y == round(y_pred): # true
+            if y == 0: # true negative
+                tn+=1 
+                continue
+            else: # true positive
+                tp+=1
+                continue
+        else: # false
+            if y == 0: # false negative
+                fn+=1 
+                continue
+            else: # false positive
+                fp+=1
+                continue
+    try:
+        return fp/size, fn/size, tp/size, tn/size
+    except ZeroDivisionError:
+        return 0, 0, 0, 0 
 
 class LossMetric(Metric):
     """for applying torch loss functions as metrics."""
-    def __init__(self, lossFunc, contMetric=True, finalMetric=False, printInfo=False) -> None:
-        super().__init__(contMetric, finalMetric, printInfo)
+    def __init__(self, lossFunc) -> None:
         self.loss = lossFunc
-        self.metricName = "LossMetric"
 
     def getSampleMetric(self, y, y_pred):
         with torch.no_grad():
             return self.loss(y, y_pred).item()
 
 
-class ConfusionMatrix():
-    def __init__(self, vals) -> None:
-        self.fp, self.fn, self.tp, self.tn = vals
-        self.metricName = "ConfusionMatrix"
-
-    def __repr__ (self) -> str:
-        return f"<ConfusionMatrix: False postives={self.fp:.4}, False negative={self.fn:.4}, True negative={self.tn:.4}, True positive={self.tp:.4}>"
-
-class ConfusionMetric(Metric): #confused yet?, i am.
-    def __init__(self, contMetric=False, finalMetric=True, printInfo=False) -> None:
-        super().__init__(contMetric, finalMetric, printInfo)
-            
+class ConfusionMetric(Metric):
     def getTrainMetric(self, data):
-        size = len(data)
-        fp, fn, tp, tn = 0, 0, 0, 0
-        for (y,y_pred) in data:
-            if y == round(y_pred): # true
-                if y == 0: # true negative
-                    tn+=1 
-                    continue
-                else: # true positive
-                    tp+=1
-                    continue
-            else: # false
-                if y == 0: # false negative
-                    fn+=1 
-                    continue
-                else: # false positive
-                    fp+=1
-                    continue
-        return ConfusionMatrix([fp/size, fn/size, tp/size, tn/size])
+        return confusionMatrix(data)
 
+class AccuracyMetric(Metric):
+    def getTrainMetric(self, data):
+        fp, fn, tp, tn = confusionMatrix(data)
+        return tp + tn
+
+class PrecisionMetric(Metric):
+    def getTrainMetric(self, data):
+        fp, fn, tp, tn = confusionMatrix(data)
+        try:
+            result = tp/(tp+fp)
+        except ZeroDivisionError:
+            result = nan
+        return result
+
+class RecallMetric(Metric):
+    def getTrainMetric(self, data):
+        fp, fn, tp, tn = confusionMatrix(data)
+        try:
+            result = tp/(tp+fn)
+        except ZeroDivisionError:
+            result = nan
+        return result
+
+class HarmonicMeanMetric(Metric):
+    def getTrainMetric(self, data):
+        fp, fn, tp, tn = confusionMatrix(data)
+        try:
+            recall = tp/(tp+fn)
+            precision = tp/(tp+fp)
+            result = (2*precision*recall)/(precision+recall)
+        except ZeroDivisionError:
+            result = nan
+        return result
