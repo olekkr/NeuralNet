@@ -13,23 +13,24 @@ class Metric: # maybe consider using torch.metric
     Abstract class 
     takes care of evaluation
     """
-    def getContniousMetric(self, data): # (y,y_pred) as TENSORS
+    def getSampleMetric(self, data): # (y,y_pred) as TENSORS
         '''
-        getContniousMetric is a metric which returns a value each epoch
-        '''
-        raise NotImplementedError
-
-    def getFinalMetric(self, data): # (y,y_pred) as TENSORS
-        '''
-        getFinalMetric is a metric that is returned continously over epochs/samples, 
-        depending on wether its used in training or verification respctivly.
+        getSampleMetric is a metric which returns a value each sample
         '''
         raise NotImplementedError
 
-    def printMaybe(self, epoch, y, y_pred):
-        with torch.no_grad(): 
-            if self.printInfo:
-                print(f"Epoch {epoch} : {self.metricName}: {self.getContniousMetric(y, y_pred)}")
+    def getEpochMetric(self, data): # (y,y_pred) as TENSORS
+        '''
+        getEpochMetric is a metric which returns a value each epoch
+        '''
+        raise NotImplementedError
+    
+    def getTrainMetric(self, data): # (y,y_pred) as TENSORS
+        '''
+        getTrainMetric is a metric that is returned continously over all samples during training.
+        '''
+        raise NotImplementedError
+
     # todo accuracy, precision, recall, F1-score
 
 
@@ -41,11 +42,9 @@ class LossMetric(Metric):
         self.loss = lossFunc
         self.metricName = "LossMetric"
 
-    def getContniousMetric(self, y, y_pred):
-        return self.loss(y, y_pred).item()
-    
-    def getFinalMetric(self, data):
-        raise NotImplementedError
+    def getSampleMetric(self, y, y_pred):
+        with torch.no_grad():
+            return self.loss(y, y_pred).item()
 
 
 class ConfusionMatrix():
@@ -60,7 +59,7 @@ class ConfusionMetric(Metric): #confused yet?, i am.
     def __init__(self, contMetric=False, finalMetric=True, printInfo=False) -> None:
         super().__init__(contMetric, finalMetric, printInfo)
             
-    def getFinalMetric(self, data):
+    def getTrainMetric(self, data):
         size = len(data)
         fp, fn, tp, tn = 0, 0, 0, 0
         for (y,y_pred) in data:

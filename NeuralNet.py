@@ -1,7 +1,10 @@
+from numpy import empty
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset, Dataset
 import matplotlib as plt
+
+from EvalRecipe import *
 from Metrics import *
 
 
@@ -46,61 +49,53 @@ class TrainHandler():
         self.optimizer = optimizer(model.parameters(), learning_rate)
         self.loss = loss()
         self.num_epochs = num_epochs
+        self.doTrain = True
 
-    def train(self, metrics=[]):
-        """Trains the neural network """
+    def trainOneSample(self, x, y, evalRecipe): 
+        ''' 
+        Trains model on one sample.        
+        '''
         
-        finData = [] # data for final Metrics
-        contData = [] # data *from* final Metrics
+        # forward pass
+        y_pred = self.model.forward(x)
+        
+        
+        if evalRecipe:
+            evalRecipe.collectSampleMetrics(y_pred,y)
 
-        print(metrics)
-        anyContData = any(metric.doContMetric for metric in metrics)
-        anyFinData = any(metric.doFinalMetric for metric in metrics)
+        if self.doTrain:
+            #calculate loss
+            loss = self.loss(y_pred,y)
+            # zero all paramgradients
+            self.optimizer.zero_grad()
+            # calculate gradients
+            loss.backward()
+            # update parameters based on optimizer
+            self.optimizer.step()
 
+        
+
+    def trainAllSamples(self, evalRecipe):
+        ''' 
+        Trains neural network on  whole dataset.
+        '''
+        for i, (x, y) in enumerate(self.loader):
+            # send to device
+            y = y.to(self.model.device)
+            x = x.to(self.model.device)
+            self.trainOneSample(x, y, evalRecipe)
+
+
+    def trainAllEpochs(self, evalRecipe=None):
+        ''' 
+        Trains neural network on whole dataset, multiple times.
+        '''
         # does all epochs
         for e in range(self.num_epochs):
-            for i, (x, y) in enumerate(self.loader):
-                # send to device
-                y = y.to(self.model.device)
-                x = x.to(self.model.device)
-
-                # forward pass
-                y_pred = self.model.forward(x)
-                #calculate loss
-                loss = self.loss(y_pred,y)
-
-                # zero all paramgradients
-                self.optimizer.zero_grad()
-                # calculate gradients
-                loss.backward()
-                # update parameters based on optimizer
-                self.optimizer.step()
-
-                # collects data for finalMetrics
-                if anyFinData:
-                    finData.append([y.item(), y_pred.item()])
-                # calculates data from Continous metrics
-                if anyContData:
-                    contData.append([metric.getContniousMetric(y, y_pred) for metric in metrics if metric.doContMetric])
-            
-            # 
-            if e+1 % 100 == 0:
-                for m in metrics:
-                    m.printMaybe(e+1, y, y_pred)  
-
-        finalMetricData = [metric.getFinalMetric(finData) for metric in metrics if metric.doFinalMetric]
-
-        return [finalMetricData, contData]
-    
-    def trainWithPlot(self, axis=None, metrics=[], file=None):
-        finalMetricData, contData = self.train(metrics)
-        print(finalMetricData)
-        print(contData)
+            self.trainAllSamples(evalRecipe)
 
 
-
-
-
+'''
 class EvalHandler:
     """Handles evaluation of a neural net"""
     def __init__(self, model, val_data:Dataset, loss=torch.nn.BCELoss) -> None:
@@ -128,3 +123,4 @@ class EvalHandler:
     def evaluateWithPlot(self, file, axis, *metrics):
         data = self.evaluate(metrics) 
 
+'''
